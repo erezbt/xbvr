@@ -2,7 +2,7 @@ name: Build Multi-Arch Dockers
 
 on:
   push:
-    branches: master
+    branches: multi
 
 jobs:
   build:
