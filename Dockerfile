@@ -1,4 +1,4 @@
-FROM node:12 as build-env
+FROM ubuntu:20.04
 
 ### Install Go ###
 ARG TARGETPLATFORM
@@ -25,4 +25,4 @@ COPY --from=build-env /app/xbvr /
 EXPOSE 9998-9999
 VOLUME /root/.config/
 
-ENTRYPOINT ["/xbvr"]
+CMD ["/usr/bin/xbvr"]
