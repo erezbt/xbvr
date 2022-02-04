@@ -13,6 +13,7 @@ import (
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"github.com/jinzhu/gorm"
+	"github.com/mcuadros/go-version"
 	"github.com/pkg/errors"
 	"github.com/putdotio/go-putio"
 	"github.com/tidwall/gjson"
@@ -156,16 +157,17 @@ func (i ConfigResource) versionCheck(req *restful.Request, resp *restful.Respons
 	if config.Config.Web.UpdateCheck && common.CurrentVersion != "CURRENT" {
 		r, err := resty.R().
 			SetHeader("User-Agent", "XBVR/"+common.CurrentVersion).
-			Get("https://updates.xbvr.app/latest.json")
+			SetHeader("Accept", "application/vnd.github.v3+json").
+			Get("https://api.github.com/repos/xbapps/xbvr/releases/latest")
 		if err != nil || r.StatusCode() != 200 {
 			resp.WriteHeaderAndEntity(http.StatusOK, out)
 			return
 		}
 
-		out.LatestVersion = gjson.Get(r.String(), "latestVersion").String()
+		out.LatestVersion = gjson.Get(r.String(), "tag_name").String()
 
 		// Decide if UI notification is needed
-		if out.LatestVersion != common.CurrentVersion {
+		if version.Compare(common.CurrentVersion, out.LatestVersion, "<") {
 			out.UpdateNotify = true
 		}
 	}
@@ -207,7 +209,13 @@ func (i ConfigResource) toggleSite(req *restful.Request, resp *restful.Response)
 	site.Save()
 
 	var sites []models.Site
-	db.Order("name asc").Find(&sites)
+	switch db.Dialect().GetName() {
+	case "mysql":
+		db.Order("name asc").Find(&sites)
+	case "sqlite3":
+		db.Order("name COLLATE NOCASE asc").Find(&sites)
+	}
+
 	resp.WriteHeaderAndEntity(http.StatusOK, sites)
 }
 
